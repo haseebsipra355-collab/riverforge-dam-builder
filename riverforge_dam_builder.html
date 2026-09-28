@@ -1,0 +1,640 @@
+<div id='riverforge-game' class='w-full min-w-0'>
+  <style>
+    #riverforge-game { --rf-panel: var(--viz-panel); --rf-card: var(--viz-card); --rf-text: var(--viz-text); --rf-muted: var(--viz-muted); --rf-border: var(--viz-border); font-family: ui-sans-serif, system-ui, sans-serif; color: var(--rf-text); }
+    #riverforge-game * { box-sizing: border-box; }
+    #riverforge-game .rf-shell { border: 1px solid var(--rf-border); border-radius: 18px; overflow: hidden; background: var(--rf-panel); }
+    #riverforge-game .rf-top { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 12px; border-bottom: 1px solid var(--rf-border); }
+    #riverforge-game .rf-metrics { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+    #riverforge-game .rf-metric { background: var(--rf-card); border: 1px solid var(--rf-border); border-radius: 12px; padding: 7px 10px; min-width: 92px; }
+    #riverforge-game .rf-metric span { display: block; font-size: 11px; color: var(--rf-muted); }
+    #riverforge-game .rf-metric strong { display: block; margin-top: 1px; font-size: 14px; }
+    #riverforge-game .rf-actions { display: flex; gap: 7px; flex-wrap: wrap; }
+    #riverforge-game button, #riverforge-game select, #riverforge-game input { font: inherit; }
+    #riverforge-game button { min-height: 44px; border: 1px solid var(--rf-border); border-radius: 11px; background: var(--rf-card); color: var(--rf-text); padding: 9px 12px; cursor: pointer; font-weight: 700; }
+    #riverforge-game button:hover { border-color: var(--viz-accent); }
+    #riverforge-game button:focus-visible, #riverforge-game input:focus-visible, #riverforge-game select:focus-visible { outline: 3px solid var(--viz-accent-bg); outline-offset: 2px; }
+    #riverforge-game button.primary { background: var(--viz-accent-bg); border-color: var(--viz-accent); color: var(--viz-text); }
+    #riverforge-game button.danger { border-color: color-mix(in srgb, #b3261e 60%, var(--rf-border)); }
+    #riverforge-game button:disabled { opacity: .5; cursor: not-allowed; }
+    #riverforge-game .rf-stage { position: relative; background: var(--rf-card); }
+    #riverforge-game canvas { display: block; width: 100%; height: auto; aspect-ratio: 900/440; }
+    #riverforge-game .rf-banner { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 24px); padding: 7px 10px; border-radius: 999px; background: color-mix(in srgb, var(--rf-card) 86%, transparent); border: 1px solid var(--rf-border); font-size: 12px; font-weight: 800; backdrop-filter: blur(8px); }
+    #riverforge-game .rf-start, #riverforge-game .rf-end { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--rf-panel) 84%, transparent); backdrop-filter: blur(8px); }
+    #riverforge-game .rf-start[hidden], #riverforge-game .rf-end[hidden] { display: none; }
+    #riverforge-game .rf-start-card, #riverforge-game .rf-end-card { width: min(520px, 100%); background: var(--rf-panel); border: 1px solid var(--rf-border); border-radius: 18px; padding: 18px; }
+    #riverforge-game .rf-brand { font-size: clamp(22px, 5vw, 34px); line-height: 1; margin: 0; }
+    #riverforge-game .rf-sub { color: var(--rf-muted); margin: 8px 0 14px; }
+    #riverforge-game .rf-start-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    #riverforge-game label { display: grid; gap: 6px; font-size: 12px; color: var(--rf-muted); }
+    #riverforge-game select { min-height: 44px; width: 100%; border: 1px solid var(--rf-border); border-radius: 10px; background: var(--rf-card); color: var(--rf-text); padding: 8px 10px; font-size: 16px; }
+    #riverforge-game .rf-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(250px, .8fr); gap: 12px; padding: 12px; }
+    #riverforge-game .rf-panel { min-width: 0; border: 1px solid var(--rf-border); border-radius: 14px; background: var(--rf-card); padding: 12px; }
+    #riverforge-game .rf-panel h3 { margin: 0 0 10px; font-size: 14px; }
+    #riverforge-game .rf-control { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 6px 10px; align-items: center; margin-bottom: 12px; }
+    #riverforge-game .rf-control label { display: block; font-weight: 700; color: var(--rf-text); font-size: 13px; }
+    #riverforge-game .rf-control small { color: var(--rf-muted); }
+    #riverforge-game .rf-control input[type='range'] { grid-column: 1 / -1; width: 100%; min-height: 34px; accent-color: var(--viz-accent); }
+    #riverforge-game .rf-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    #riverforge-game .rf-bar { height: 9px; border-radius: 999px; background: color-mix(in srgb, var(--rf-border) 80%, transparent); overflow: hidden; }
+    #riverforge-game .rf-bar > i { display: block; height: 100%; width: 50%; border-radius: inherit; background: var(--viz-series-3); transition: width .25s ease; }
+    #riverforge-game .rf-statline { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin: 8px 0 4px; font-size: 12px; }
+    #riverforge-game .rf-log { display: grid; gap: 7px; max-height: 164px; overflow: auto; padding-right: 2px; }
+    #riverforge-game .rf-log div { border-left: 3px solid var(--viz-series-4); padding: 7px 8px; background: color-mix(in srgb, var(--rf-panel) 78%, transparent); border-radius: 8px; font-size: 12px; }
+    #riverforge-game .rf-log time { color: var(--rf-muted); margin-right: 6px; }
+    #riverforge-game .rf-contract { margin-top: 12px; border-top: 1px solid var(--rf-border); padding-top: 10px; }
+    #riverforge-game .rf-objectives { display: grid; gap: 7px; }
+    #riverforge-game .rf-obj { display: grid; grid-template-columns: 20px 1fr auto; gap: 8px; align-items: center; font-size: 12px; }
+    #riverforge-game .rf-check { width: 18px; height: 18px; border: 1px solid var(--rf-border); border-radius: 50%; display: grid; place-items: center; }
+    #riverforge-game .rf-check.done { background: var(--viz-series-3); color: var(--rf-panel); }
+    #riverforge-game .rf-sheet { border-top: 1px solid var(--rf-border); padding: 12px; background: var(--rf-panel); }
+    #riverforge-game .rf-sheet[hidden] { display: none; }
+    #riverforge-game .rf-sheet-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 10px; }
+    #riverforge-game .rf-upgrades { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+    #riverforge-game .rf-upgrade { border: 1px solid var(--rf-border); border-radius: 12px; padding: 10px; background: var(--rf-card); }
+    #riverforge-game .rf-upgrade h4 { margin: 0; font-size: 13px; }
+    #riverforge-game .rf-upgrade p { min-height: 38px; margin: 6px 0; font-size: 12px; color: var(--rf-muted); }
+    #riverforge-game .rf-upgrade button { width: 100%; }
+    #riverforge-game .rf-build { margin: 12px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; border: 1px dashed var(--rf-border); border-radius: 14px; padding: 12px; background: var(--rf-panel); }
+    #riverforge-game .rf-build[hidden] { display: none; }
+    #riverforge-game .rf-build strong { display: block; }
+    #riverforge-game .rf-build span { display: block; margin-top: 3px; color: var(--rf-muted); font-size: 12px; }
+    #riverforge-game .rf-speed { display: inline-flex; border: 1px solid var(--rf-border); border-radius: 11px; overflow: hidden; }
+    #riverforge-game .rf-speed button { border: 0; border-radius: 0; min-width: 44px; padding-inline: 9px; }
+    #riverforge-game .rf-speed button.active { background: var(--viz-accent-bg); }
+    @media (max-width: 700px) { #riverforge-game .rf-grid { grid-template-columns: 1fr; } #riverforge-game .rf-upgrades { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 460px) { #riverforge-game .rf-start-grid, #riverforge-game .rf-two, #riverforge-game .rf-upgrades, #riverforge-game .rf-build { grid-template-columns: 1fr; } #riverforge-game .rf-top { align-items: stretch; } #riverforge-game .rf-metric { flex: 1 1 45%; } #riverforge-game .rf-actions { width: 100%; } #riverforge-game .rf-actions > button, #riverforge-game .rf-actions > .rf-speed { flex: 1; } }
+    @media (prefers-reduced-motion: reduce) { #riverforge-game .rf-bar > i { transition: none; } }
+  </style>
+
+  <section class='rf-shell' aria-label='Riverforge dam builder game'>
+    <header class='rf-top'>
+      <div class='rf-metrics'>
+        <div class='rf-metric'><span>Project funds</span><strong id='funds'>$12.0M</strong></div>
+        <div class='rf-metric'><span>Reservoir</span><strong id='water'>55%</strong></div>
+        <div class='rf-metric'><span>Power</span><strong id='power'>0 MW</strong></div>
+        <div class='rf-metric'><span>Safety</span><strong id='safety'>85%</strong></div>
+        <div class='rf-metric'><span>Day / time</span><strong id='daytime'>Day 1 · 08:00</strong></div>
+      </div>
+      <div class='rf-actions'>
+        <button id='pauseBtn' type='button' aria-pressed='false'>Pause</button>
+        <div class='rf-speed' aria-label='Simulation speed'>
+          <button type='button' data-speed='1' class='active'>1×</button>
+          <button type='button' data-speed='2'>2×</button>
+          <button type='button' data-speed='4'>4×</button>
+        </div>
+        <button id='upgradeBtn' type='button'>Upgrades</button>
+      </div>
+    </header>
+
+    <div class='rf-stage'>
+      <canvas id='gameCanvas' width='900' height='440' aria-label='Animated mountain valley, river, reservoir and dam simulation'>Your browser cannot display the game canvas.</canvas>
+      <div id='weatherBanner' class='rf-banner'>Clear skies · inflow normal</div>
+
+      <div id='startScreen' class='rf-start'>
+        <div class='rf-start-card'>
+          <p class='rf-brand'><strong>Riverforge</strong></p>
+          <p class='rf-sub'>Design, build and operate a hydroelectric dam while balancing power, flood safety, ecology and public trust.</p>
+          <div class='rf-start-grid'>
+            <label>Scenario
+              <select id='scenarioSelect'>
+                <option value='balanced'>Green Valley Recovery</option>
+                <option value='storm'>Monsoon Frontier</option>
+                <option value='drought'>Drylands Power Pact</option>
+              </select>
+            </label>
+            <label>Difficulty
+              <select id='difficultySelect'>
+                <option value='easy'>Planner</option>
+                <option value='normal' selected>Engineer</option>
+                <option value='hard'>Director</option>
+              </select>
+            </label>
+          </div>
+          <button id='startBtn' type='button' class='primary'>Start project</button>
+        </div>
+      </div>
+
+      <div id='endScreen' class='rf-end' hidden>
+        <div class='rf-end-card'>
+          <h2 id='endTitle' class='rf-brand'>Contract complete</h2>
+          <p id='endText' class='rf-sub'></p>
+          <div class='rf-two'>
+            <button id='restartBtn' type='button' class='primary'>Play again</button>
+            <button id='continueBtn' type='button'>Continue sandbox</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id='buildCard' class='rf-build'>
+      <div>
+        <strong>Build the Aurora Gravity Dam</strong>
+        <span>Concrete gravity wall · 42 MW turbine hall · adjustable spillway · cost $4.5M.</span>
+      </div>
+      <button id='buildBtn' type='button' class='primary'>Build dam · $4.5M</button>
+    </div>
+
+    <div class='rf-grid'>
+      <section class='rf-panel' aria-labelledby='controlsTitle'>
+        <h3 id='controlsTitle'>Control room</h3>
+        <div class='rf-control'>
+          <label for='turbineRange'>Turbine load</label><strong id='turbineValue'>0%</strong>
+          <small>Higher load earns more power revenue but lowers reservoir level.</small>
+          <input id='turbineRange' type='range' min='0' max='100' value='0' disabled>
+        </div>
+        <div class='rf-control'>
+          <label for='gateRange'>Spillway gates</label><strong id='gateValue'>15%</strong>
+          <small>Open gates before storms. Sudden releases can flood the downstream town.</small>
+          <input id='gateRange' type='range' min='0' max='100' value='15' disabled>
+        </div>
+        <div class='rf-two'>
+          <button id='ecoBtn' type='button' disabled>Eco pulse · $0.18M</button>
+          <button id='emergencyBtn' type='button' class='danger' disabled>Emergency spill</button>
+        </div>
+
+        <div class='rf-contract'>
+          <div class='rf-statline'><span>Reservoir capacity</span><strong id='capacityText'>100%</strong></div>
+          <div class='rf-bar'><i id='waterBar'></i></div>
+          <div class='rf-statline'><span>Ecology</span><strong id='ecoText'>65%</strong></div>
+          <div class='rf-bar'><i id='ecoBar'></i></div>
+          <div class='rf-statline'><span>Public trust</span><strong id='repText'>75%</strong></div>
+          <div class='rf-bar'><i id='repBar'></i></div>
+        </div>
+      </section>
+
+      <aside class='rf-panel'>
+        <h3>Mission objectives</h3>
+        <div id='objectives' class='rf-objectives'></div>
+        <div class='rf-contract'>
+          <h3>Operations log</h3>
+          <div id='log' class='rf-log' aria-live='polite'></div>
+        </div>
+      </aside>
+    </div>
+
+    <section id='upgradeSheet' class='rf-sheet' hidden>
+      <div class='rf-sheet-head'>
+        <div><strong>Engineering upgrades</strong><div class='rf-sub' style='margin:2px 0 0'>Permanent improvements for this run.</div></div>
+        <button id='closeUpgradeBtn' type='button'>Close</button>
+      </div>
+      <div id='upgrades' class='rf-upgrades'></div>
+    </section>
+  </section>
+
+  <script>
+  (() => {
+    const root = document.getElementById('riverforge-game');
+    if (!root || root.dataset.ready) return;
+    root.dataset.ready = '1';
+
+    const $ = (id) => root.querySelector('#' + id);
+    const canvas = $('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const els = {
+      funds: $('funds'), water: $('water'), power: $('power'), safety: $('safety'), daytime: $('daytime'),
+      banner: $('weatherBanner'), start: $('startScreen'), end: $('endScreen'), endTitle: $('endTitle'), endText: $('endText'),
+      buildCard: $('buildCard'), buildBtn: $('buildBtn'), pauseBtn: $('pauseBtn'), upgradeBtn: $('upgradeBtn'), upgradeSheet: $('upgradeSheet'),
+      closeUpgradeBtn: $('closeUpgradeBtn'), turbine: $('turbineRange'), gate: $('gateRange'), turbineValue: $('turbineValue'), gateValue: $('gateValue'),
+      ecoBtn: $('ecoBtn'), emergencyBtn: $('emergencyBtn'), waterBar: $('waterBar'), ecoBar: $('ecoBar'), repBar: $('repBar'),
+      ecoText: $('ecoText'), repText: $('repText'), capacityText: $('capacityText'), objectives: $('objectives'), log: $('log'), upgrades: $('upgrades')
+    };
+
+    const scenarios = {
+      balanced: { name: 'Green Valley Recovery', weather: ['clear','clear','rain','clear','rain','clear','storm'], water: 55, eco: 65, funds: 12 },
+      storm: { name: 'Monsoon Frontier', weather: ['rain','storm','rain','storm','clear','rain','storm'], water: 72, eco: 58, funds: 13 },
+      drought: { name: 'Drylands Power Pact', weather: ['clear','drought','clear','drought','rain','clear','drought'], water: 42, eco: 72, funds: 11.5 }
+    };
+    const difficulty = {
+      easy: { inflow: .85, damage: .65, budget: 2, target: 360 },
+      normal: { inflow: 1, damage: 1, budget: 0, target: 500 },
+      hard: { inflow: 1.16, damage: 1.35, budget: -1, target: 650 }
+    };
+    const weatherData = {
+      clear: { label: 'Clear skies', inflow: .52, evap: .15 },
+      rain: { label: 'Steady rain', inflow: 1.05, evap: .08 },
+      storm: { label: 'Severe storm', inflow: 1.9, evap: .04 },
+      drought: { label: 'Drought', inflow: .18, evap: .28 }
+    };
+
+    const upgrades = [
+      { id:'wall', name:'Reinforced Wall', cost:2.1, text:'+18% reservoir capacity and +8 safety.', apply:s => { s.capacity += 18; s.safety = Math.min(100, s.safety + 8); } },
+      { id:'turbine', name:'Turbine II', cost:1.8, text:'+24 MW maximum generation.', apply:s => { s.maxPower += 24; } },
+      { id:'spill', name:'Smart Spillway', cost:1.25, text:'Safer releases and less downstream flood damage.', apply:s => { s.spillSafe += 16; } },
+      { id:'fish', name:'Fish Ladder', cost:.7, text:'+18 ecology and slower ecological decline.', apply:s => { s.ecology = Math.min(100, s.ecology + 18); s.fish = true; } },
+      { id:'sensors', name:'Sensor Grid', cost:.9, text:'+10 safety and earlier storm warnings.', apply:s => { s.safety = Math.min(100, s.safety + 10); s.sensors = true; } },
+      { id:'automation', name:'Gate Automation', cost:1.1, text:'Reduces safety loss during overflow events.', apply:s => { s.automation = true; } }
+    ];
+
+    let state;
+    let simTimer = 0;
+    let frameId = 0;
+    let lastFrame = performance.now();
+    let cloudOffset = 0;
+    let rainOffset = 0;
+
+    function freshState() {
+      const scKey = $('scenarioSelect').value;
+      const diffKey = $('difficultySelect').value;
+      const sc = scenarios[scKey];
+      const df = difficulty[diffKey];
+      return {
+        running: true, paused: false, speed: 1, scenario: scKey, difficulty: diffKey,
+        day: 1, hour: 8, weather: sc.weather[0], nextWeatherHour: 18,
+        funds: sc.funds + df.budget, water: sc.water, capacity: 100, ecology: sc.eco,
+        reputation: 75, safety: 85, damBuilt: false, building: false, buildProgress: 0,
+        turbine: 0, gate: 15, maxPower: 42, spillSafe: 0, fish: false, sensors: false, automation: false,
+        generated: 0, peakPower: 0, floodEvents: 0, overflowHours: 0, upgrades: new Set(),
+        wonShown: false, lastEventKey: '', ecoPulseCd: 0
+      };
+    }
+
+    function log(message) {
+      const item = document.createElement('div');
+      const time = document.createElement('time');
+      time.textContent = 'D' + state.day + ' ' + String(Math.floor(state.hour)).padStart(2,'0') + ':00';
+      item.append(time, document.createTextNode(message));
+      els.log.prepend(item);
+      while (els.log.children.length > 6) els.log.lastElementChild.remove();
+    }
+
+    function setWeather(type, announced = true) {
+      state.weather = type;
+      const wd = weatherData[type];
+      const warning = type === 'storm' ? ' · flood watch active' : type === 'drought' ? ' · conserve water' : ' · inflow ' + (type === 'rain' ? 'rising' : 'normal');
+      els.banner.textContent = wd.label + warning;
+      if (announced) log('Weather update: ' + wd.label + '.');
+    }
+
+    function scheduleWeather() {
+      const seq = scenarios[state.scenario].weather;
+      const slot = (state.day * 2 + Math.floor(state.hour / 12)) % seq.length;
+      let next = seq[slot];
+      if (state.sensors && next === 'storm') log('Sensor Grid: severe storm expected within 6 hours.');
+      setWeather(next);
+    }
+
+    function startGame() {
+      state = freshState();
+      els.start.hidden = true;
+      els.end.hidden = true;
+      els.upgradeSheet.hidden = true;
+      els.log.innerHTML = '';
+      setWeather(state.weather, false);
+      log('Contract activated. Build the dam and stabilize the valley grid.');
+      updateUI();
+      drawScene();
+    }
+
+    function buildDam() {
+      if (!state || state.damBuilt || state.building) return;
+      if (state.funds < 4.5) { log('Insufficient funds for dam construction.'); return; }
+      state.funds -= 4.5;
+      state.building = true;
+      state.buildProgress = 0;
+      els.buildBtn.disabled = true;
+      log('Construction started. Heavy crews mobilized.');
+      updateUI();
+    }
+
+    function finishBuild() {
+      state.building = false;
+      state.damBuilt = true;
+      state.turbine = 38;
+      state.gate = 15;
+      els.turbine.value = '38';
+      els.gate.value = '15';
+      log('Aurora Dam commissioned. Turbines and spillway are online.');
+    }
+
+    function buyUpgrade(id) {
+      if (!state.damBuilt) return;
+      const up = upgrades.find(x => x.id === id);
+      if (!up || state.upgrades.has(id)) return;
+      if (state.funds < up.cost) { log('Upgrade deferred: insufficient project funds.'); return; }
+      state.funds -= up.cost;
+      state.upgrades.add(id);
+      up.apply(state);
+      log(up.name + ' installed.');
+      renderUpgrades();
+      updateUI();
+    }
+
+    function ecoPulse() {
+      if (!state.damBuilt || state.ecoPulseCd > 0) return;
+      if (state.funds < .18) { log('Eco pulse cancelled: insufficient funds.'); return; }
+      state.funds -= .18;
+      state.ecology = Math.min(100, state.ecology + 7);
+      state.reputation = Math.min(100, state.reputation + 2);
+      state.ecoPulseCd = 16;
+      log('Environmental flow pulse released downstream.');
+      updateUI();
+    }
+
+    function emergencySpill() {
+      if (!state.damBuilt) return;
+      state.gate = 100;
+      els.gate.value = '100';
+      state.reputation = Math.max(0, state.reputation - 2);
+      log('Emergency spillway opened to maximum.');
+      updateUI();
+    }
+
+    function simulate(hours) {
+      if (!state || !state.running || state.paused) return;
+      const df = difficulty[state.difficulty];
+      state.hour += hours;
+      if (state.ecoPulseCd > 0) state.ecoPulseCd = Math.max(0, state.ecoPulseCd - hours);
+
+      if (state.building) {
+        state.buildProgress += hours / 6;
+        if (state.buildProgress >= 1) finishBuild();
+      }
+
+      if (state.hour >= 24) {
+        state.hour -= 24;
+        state.day += 1;
+        state.funds -= state.damBuilt ? .08 : .025;
+        state.safety = Math.max(0, state.safety - (state.damBuilt ? .35 : 0));
+        if (state.day % 2 === 0 && state.reputation >= 65) {
+          state.funds += .35;
+          log('Regional authority released a $0.35M performance grant.');
+        }
+      }
+
+      if (state.hour >= state.nextWeatherHour || (state.nextWeatherHour === 18 && state.hour < 6)) {
+        scheduleWeather();
+        state.nextWeatherHour = state.hour < 6 ? 12 : (state.hour < 18 ? 18 : 6);
+      }
+
+      const wd = weatherData[state.weather];
+      const inflow = wd.inflow * df.inflow * hours;
+      const release = state.damBuilt ? ((state.gate / 100) * 1.08 + (state.turbine / 100) * .72) * hours : .4 * hours;
+      const evaporation = wd.evap * hours;
+      state.water += inflow - release - evaporation;
+
+      if (state.damBuilt) {
+        const head = Math.max(.25, Math.min(1.05, state.water / Math.max(1, state.capacity)));
+        const power = state.maxPower * (state.turbine / 100) * head;
+        state.generated += power * hours;
+        state.peakPower = Math.max(state.peakPower, power);
+        state.funds += power * hours * 95 / 1000000;
+
+        const ecoLoss = (state.turbine / 100) * .018 * hours + (state.gate > 70 ? .026 : .006) * hours;
+        state.ecology = Math.max(0, state.ecology - ecoLoss * (state.fish ? .45 : 1));
+        if (state.ecology < 35) state.reputation = Math.max(0, state.reputation - .02 * hours);
+
+        const safeRelease = 72 + state.spillSafe;
+        if (state.gate > safeRelease) {
+          const damage = (state.gate - safeRelease) * .006 * hours * df.damage;
+          state.reputation = Math.max(0, state.reputation - damage);
+          if (Math.random() < .01 * hours * df.damage) {
+            state.floodEvents += 1;
+            state.funds -= .28;
+            log('Downstream flood damage reported. Emergency recovery cost $0.28M.');
+          }
+        }
+
+        if (state.water > state.capacity) {
+          state.overflowHours += hours;
+          const protect = state.automation ? .45 : 1;
+          state.safety -= (state.water - state.capacity) * .11 * hours * df.damage * protect;
+          state.reputation -= .025 * hours;
+          if (state.lastEventKey !== 'overflow') {
+            state.lastEventKey = 'overflow';
+            log('Reservoir overflow! Open spillway gates immediately.');
+          }
+        } else if (state.lastEventKey === 'overflow') {
+          state.lastEventKey = '';
+          log('Reservoir returned below structural capacity.');
+        }
+
+        if (state.water < 18) {
+          state.safety = Math.max(0, state.safety - .03 * hours);
+          state.reputation = Math.max(0, state.reputation - .035 * hours);
+        }
+      }
+
+      state.water = Math.max(4, Math.min(state.capacity + 18, state.water));
+      state.safety = Math.max(0, Math.min(100, state.safety));
+      state.reputation = Math.max(0, Math.min(100, state.reputation));
+      state.ecology = Math.max(0, Math.min(100, state.ecology));
+
+      checkEnd();
+      updateUI();
+    }
+
+    function objectivesData() {
+      const target = difficulty[state.difficulty].target;
+      return [
+        { done: state.damBuilt, label:'Commission the dam', value: state.damBuilt ? 'Done' : (state.building ? Math.round(state.buildProgress*100)+'%' : 'Not built') },
+        { done: state.generated >= target, label:'Generate ' + target + ' MWh', value: Math.floor(state.generated) + ' MWh' },
+        { done: state.safety >= 70 && state.day >= 5, label:'Keep safety ≥ 70% through Day 5', value: Math.round(state.safety) + '%' },
+        { done: state.ecology >= 50 && state.day >= 5, label:'Maintain ecology ≥ 50%', value: Math.round(state.ecology) + '%' }
+      ];
+    }
+
+    function checkEnd() {
+      if (state.safety <= 0 || state.reputation <= 0 || state.funds < -1) {
+        state.running = false;
+        els.endTitle.textContent = state.safety <= 0 ? 'Dam failure' : state.reputation <= 0 ? 'Contract cancelled' : 'Project insolvent';
+        els.endText.textContent = 'The run ended on Day ' + state.day + ' after generating ' + Math.floor(state.generated) + ' MWh. Review gate timing, upgrades and reserve funds, then try again.';
+        $('continueBtn').hidden = true;
+        els.end.hidden = false;
+        return;
+      }
+      const complete = objectivesData().every(x => x.done);
+      if (complete && !state.wonShown) {
+        state.wonShown = true;
+        els.endTitle.textContent = 'Contract complete';
+        els.endText.textContent = 'You stabilized the valley, delivered ' + Math.floor(state.generated) + ' MWh, and finished with ' + Math.round(state.reputation) + '% public trust.';
+        $('continueBtn').hidden = false;
+        els.end.hidden = false;
+      }
+    }
+
+    function updateUI() {
+      if (!state) return;
+      const head = Math.max(.25, Math.min(1.05, state.water / Math.max(1, state.capacity)));
+      const power = state.damBuilt ? state.maxPower * (state.turbine / 100) * head : 0;
+      els.funds.textContent = '$' + state.funds.toFixed(2) + 'M';
+      els.water.textContent = Math.round(state.water) + '%';
+      els.power.textContent = power.toFixed(1) + ' MW';
+      els.safety.textContent = Math.round(state.safety) + '%';
+      els.daytime.textContent = 'Day ' + state.day + ' · ' + String(Math.floor(state.hour)).padStart(2,'0') + ':00';
+      els.turbineValue.textContent = Math.round(state.turbine) + '%';
+      els.gateValue.textContent = Math.round(state.gate) + '%';
+      els.ecoText.textContent = Math.round(state.ecology) + '%';
+      els.repText.textContent = Math.round(state.reputation) + '%';
+      els.capacityText.textContent = Math.round(state.capacity) + '%';
+      els.waterBar.style.width = Math.min(100, state.water / state.capacity * 100) + '%';
+      els.ecoBar.style.width = state.ecology + '%';
+      els.repBar.style.width = state.reputation + '%';
+      els.buildCard.hidden = state.damBuilt;
+      els.buildBtn.textContent = state.building ? 'Building · ' + Math.min(100, Math.round(state.buildProgress*100)) + '%' : 'Build dam · $4.5M';
+      els.buildBtn.disabled = state.building || state.damBuilt;
+      els.turbine.disabled = !state.damBuilt;
+      els.gate.disabled = !state.damBuilt;
+      els.ecoBtn.disabled = !state.damBuilt || state.ecoPulseCd > 0;
+      els.ecoBtn.textContent = state.ecoPulseCd > 0 ? 'Eco pulse · ' + Math.ceil(state.ecoPulseCd) + 'h' : 'Eco pulse · $0.18M';
+      els.emergencyBtn.disabled = !state.damBuilt;
+      els.pauseBtn.textContent = state.paused ? 'Resume' : 'Pause';
+      els.pauseBtn.setAttribute('aria-pressed', state.paused ? 'true' : 'false');
+
+      els.objectives.innerHTML = '';
+      objectivesData().forEach(obj => {
+        const row = document.createElement('div'); row.className = 'rf-obj';
+        const check = document.createElement('span'); check.className = 'rf-check' + (obj.done ? ' done' : ''); check.textContent = obj.done ? '✓' : '';
+        const label = document.createElement('span'); label.textContent = obj.label;
+        const value = document.createElement('strong'); value.textContent = obj.value;
+        row.append(check, label, value); els.objectives.append(row);
+      });
+      renderUpgrades();
+    }
+
+    function renderUpgrades() {
+      if (!state) return;
+      els.upgrades.innerHTML = '';
+      upgrades.forEach(up => {
+        const card = document.createElement('div'); card.className = 'rf-upgrade';
+        const h = document.createElement('h4'); h.textContent = up.name;
+        const p = document.createElement('p'); p.textContent = up.text;
+        const b = document.createElement('button'); b.type = 'button';
+        const owned = state.upgrades.has(up.id);
+        b.textContent = owned ? 'Installed' : 'Install · $' + up.cost.toFixed(2) + 'M';
+        b.disabled = owned || !state.damBuilt || state.funds < up.cost;
+        b.addEventListener('click', () => buyUpgrade(up.id));
+        card.append(h,p,b); els.upgrades.append(card);
+      });
+    }
+
+    function drawScene() {
+      if (!state) return;
+      const w = canvas.width, h = canvas.height;
+      const cs = getComputedStyle(root);
+      const waterColor = cs.getPropertyValue('--viz-series-2').trim() || '#5aa7d9';
+      const ecoColor = cs.getPropertyValue('--viz-series-3').trim() || '#4f9a68';
+      const warmColor = cs.getPropertyValue('--viz-series-4').trim() || '#d59b52';
+      const hour = state.hour;
+      const night = hour < 6 || hour > 20;
+      const dusk = (hour >= 18 && hour <= 20) || (hour >= 5 && hour < 7);
+
+      const sky = ctx.createLinearGradient(0,0,0,h);
+      sky.addColorStop(0, night ? '#152239' : dusk ? '#826f79' : '#87b5c9');
+      sky.addColorStop(1, night ? '#364657' : '#d7d5c6');
+      ctx.fillStyle = sky; ctx.fillRect(0,0,w,h);
+
+      if (!night) {
+        ctx.fillStyle = 'rgba(255,244,196,.82)'; ctx.beginPath(); ctx.arc(760,70,30,0,Math.PI*2); ctx.fill();
+      } else {
+        ctx.fillStyle = 'rgba(236,241,247,.86)'; ctx.beginPath(); ctx.arc(760,70,22,0,Math.PI*2); ctx.fill();
+      }
+
+      ctx.fillStyle = night ? '#394652' : '#6f7d75';
+      ctx.beginPath(); ctx.moveTo(0,235); ctx.lineTo(120,105); ctx.lineTo(220,200); ctx.lineTo(340,80); ctx.lineTo(470,210); ctx.lineTo(610,125); ctx.lineTo(760,220); ctx.lineTo(900,140); ctx.lineTo(900,300); ctx.lineTo(0,300); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = night ? '#475448' : '#657c5b';
+      ctx.beginPath(); ctx.moveTo(0,270); ctx.lineTo(160,185); ctx.lineTo(300,260); ctx.lineTo(430,180); ctx.lineTo(610,260); ctx.lineTo(760,190); ctx.lineTo(900,245); ctx.lineTo(900,440); ctx.lineTo(0,440); ctx.closePath(); ctx.fill();
+
+      const levelY = 315 - Math.min(125, state.water * 1.22);
+      ctx.fillStyle = waterColor;
+      ctx.globalAlpha = .82;
+      ctx.beginPath(); ctx.moveTo(0,420); ctx.lineTo(0,levelY); ctx.lineTo(448,levelY+8); ctx.lineTo(448,420); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1;
+
+      ctx.strokeStyle = 'rgba(255,255,255,.3)'; ctx.lineWidth = 2;
+      for (let i=0;i<6;i++) { const y = levelY + 12 + i*22; ctx.beginPath(); ctx.moveTo(20 + ((cloudOffset+i*17)%40),y); ctx.lineTo(405,y); ctx.stroke(); }
+
+      ctx.fillStyle = waterColor; ctx.globalAlpha = .72;
+      ctx.beginPath(); ctx.moveTo(450,338); ctx.bezierCurveTo(560,320,610,350,700,340); ctx.bezierCurveTo(790,330,825,370,900,350); ctx.lineTo(900,440); ctx.lineTo(450,440); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+
+      if (state.building || state.damBuilt) {
+        const p = state.damBuilt ? 1 : Math.max(.08, Math.min(1,state.buildProgress));
+        ctx.fillStyle = '#6c7277';
+        ctx.beginPath(); ctx.moveTo(430,420); ctx.lineTo(447,420); ctx.lineTo(470,420 - 210*p); ctx.lineTo(510,420 - 210*p); ctx.lineTo(530,420); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#90979c'; ctx.fillRect(462,420 - 205*p,56,10);
+        if (state.damBuilt) {
+          const gateFlow = state.gate / 100;
+          ctx.fillStyle = waterColor; ctx.globalAlpha=.78;
+          ctx.fillRect(495,290,18,120*gateFlow);
+          ctx.globalAlpha=1;
+          ctx.fillStyle = '#3f454b'; ctx.fillRect(520,335,48,42);
+          ctx.fillStyle = warmColor; ctx.beginPath(); ctx.arc(546,356,11,0,Math.PI*2); ctx.fill();
+        } else {
+          ctx.strokeStyle = warmColor; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(430,145); ctx.lineTo(430,330); ctx.moveTo(430,150); ctx.lineTo(535,150); ctx.stroke();
+        }
+      } else {
+        ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.setLineDash([8,8]); ctx.lineWidth=2; ctx.strokeRect(445,205,74,215); ctx.setLineDash([]);
+      }
+
+      // downstream town
+      for (let i=0;i<6;i++) {
+        const x=665+i*34, y=340+(i%2)*10;
+        ctx.fillStyle='#b8a889'; ctx.fillRect(x,y,22,22);
+        ctx.fillStyle='#6c5e4c'; ctx.beginPath(); ctx.moveTo(x-3,y); ctx.lineTo(x+11,y-12); ctx.lineTo(x+25,y); ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = ecoColor;
+      for (let i=0;i<9;i++) { const x=580+i*36; const y=308+(i%3)*18; ctx.beginPath(); ctx.arc(x,y,8,0,Math.PI*2); ctx.fill(); ctx.fillRect(x-2,y,4,17); }
+
+      if (state.weather === 'rain' || state.weather === 'storm') {
+        ctx.strokeStyle='rgba(220,235,245,.65)'; ctx.lineWidth=2;
+        const n = state.weather === 'storm' ? 75 : 38;
+        for (let i=0;i<n;i++) {
+          const x=(i*79 + rainOffset*5)%w, y=(i*47 + rainOffset*14)%300;
+          ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x-6,y+14); ctx.stroke();
+        }
+      }
+
+      const clouds = state.weather === 'storm' ? 5 : state.weather === 'rain' ? 4 : 2;
+      ctx.fillStyle = state.weather === 'storm' ? 'rgba(55,65,74,.82)' : 'rgba(238,241,239,.72)';
+      for (let i=0;i<clouds;i++) {
+        const x=((i*210 + cloudOffset)%(w+180))-90, y=55+i*22;
+        ctx.beginPath(); ctx.arc(x,y,27,0,Math.PI*2); ctx.arc(x+28,y+4,34,0,Math.PI*2); ctx.arc(x+60,y,24,0,Math.PI*2); ctx.fill();
+      }
+
+      ctx.fillStyle = 'rgba(20,30,35,.65)'; ctx.fillRect(12,392,300,34);
+      ctx.fillStyle = '#fff'; ctx.font = '700 16px system-ui';
+      ctx.fillText(state.damBuilt ? 'Aurora Dam · online' : state.building ? 'Construction ' + Math.round(state.buildProgress*100) + '%' : 'Dam site · awaiting construction', 24,414);
+    }
+
+    function frame(now) {
+      if (!root.isConnected) return;
+      const dt = Math.min(40, now-lastFrame); lastFrame = now;
+      if (state && !state.paused && state.running) {
+        cloudOffset += dt * .018 * state.speed;
+        rainOffset += dt * .045 * state.speed;
+      }
+      drawScene();
+      if (!reducedMotion) frameId = requestAnimationFrame(frame);
+    }
+
+    $('startBtn').addEventListener('click', startGame);
+    $('restartBtn').addEventListener('click', startGame);
+    $('continueBtn').addEventListener('click', () => { state.running = true; els.end.hidden = true; });
+    els.buildBtn.addEventListener('click', buildDam);
+    els.pauseBtn.addEventListener('click', () => { if (!state) return; state.paused = !state.paused; updateUI(); });
+    root.querySelectorAll('[data-speed]').forEach(btn => btn.addEventListener('click', () => {
+      if (!state) return; state.speed = Number(btn.dataset.speed);
+      root.querySelectorAll('[data-speed]').forEach(b => b.classList.toggle('active', b === btn));
+    }));
+    els.upgradeBtn.addEventListener('click', () => { els.upgradeSheet.hidden = !els.upgradeSheet.hidden; if (!els.upgradeSheet.hidden) renderUpgrades(); });
+    els.closeUpgradeBtn.addEventListener('click', () => { els.upgradeSheet.hidden = true; });
+    els.turbine.addEventListener('input', () => { state.turbine = Number(els.turbine.value); updateUI(); });
+    els.gate.addEventListener('input', () => { state.gate = Number(els.gate.value); updateUI(); });
+    els.ecoBtn.addEventListener('click', ecoPulse);
+    els.emergencyBtn.addEventListener('click', emergencySpill);
+
+    state = freshState();
+    state.running = false;
+    setWeather(state.weather, false);
+    updateUI();
+    drawScene();
+    simTimer = setInterval(() => {
+      if (!root.isConnected) { clearInterval(simTimer); cancelAnimationFrame(frameId); return; }
+      simulate(.25 * (state ? state.speed : 1));
+      if (reducedMotion) drawScene();
+    }, 500);
+    if (!reducedMotion) frameId = requestAnimationFrame(frame);
+  })();
+  </script>
+</div>
